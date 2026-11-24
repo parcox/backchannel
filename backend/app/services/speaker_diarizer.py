@@ -94,7 +94,7 @@ def _get_embed_model() -> ort.InferenceSession:
     if _embed_session is None:
         path = resolve_embed_model_path()
         _embed_session = ort.InferenceSession(
-            path, _embed_session_options(), providers=["CPUExecutionProvider"]
+            path, _embed_session_options(), providers=["CUDAExecutionProvider", "CPUExecutionProvider"]
         )
         logger.info(
             f"Loaded speaker embedding model: {os.path.basename(path)} "
