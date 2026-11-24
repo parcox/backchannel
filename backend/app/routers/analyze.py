@@ -94,6 +94,7 @@ Analyze the transcript and output a JSON array of objects. Each object should be
 
 Rules:
 - Return at most 12 items total; keep each field under 200 characters
+- Write all natural-language output in Bahasa Indonesia; keep JSON keys and item_type values exactly as specified
 - Surface a good mix of all types - questions, observations, opportunities, and action items
 - Focus on value-adding insights, not obvious observations
 - For answered items, summarize what was learned concisely
