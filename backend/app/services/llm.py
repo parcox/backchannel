@@ -223,7 +223,21 @@ async def _call_openai(model_id: str, endpoint: OpenAIEndpoint, prompt: str, sys
             json=payload,
         )
         _raise_for_status(resp)
-        data = resp.json()
+        # Some OpenAI-compatible gateways return HTTP 200 with extra bytes after
+        # the first JSON object ( concatenated responses / streamed tail ).
+        # Accept the first complete object and ignore the trailing payload.
+        body = resp.text
+        try:
+            data = json.loads(body)
+        except json.JSONDecodeError:
+            stripped = body.lstrip()
+            data, end = json.JSONDecoder().raw_decode(stripped)
+            trailing = len(stripped) - end
+            if trailing:
+                logger.warning(
+                    "OpenAI-compatible response had %s trailing bytes; using first JSON object",
+                    trailing,
+                )
     return data["choices"][0]["message"]["content"] or "", data.get("usage")
 
 
