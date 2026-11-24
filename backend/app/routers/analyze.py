@@ -89,6 +89,7 @@ Analyze the transcript and output a JSON array of objects. Each object should be
 {{"item_type": "answered", "question": "the question", "answer_summary": "what we learned", "needs_followup": true/false, "followup_question": "next question if needed"}}
 
 Rules:
+- Return at most 12 items total; keep each field under 200 characters
 - Surface a good mix of all types - questions, observations, opportunities, and action items
 - Focus on value-adding insights, not obvious observations
 - For answered items, summarize what was learned concisely
