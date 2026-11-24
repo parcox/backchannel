@@ -2,12 +2,13 @@
 
 Same surface as BatchTranscriber.transcribe_segment. Models download on first
 use into DATA_DIR/asr-models and are cached per process. Inference runs in a
-thread so the event loop stays free. onnx-asr auto-selects CUDA when
-onnxruntime-gpu is installed, otherwise CPU.
+thread so the event loop stays free. Whisper runs on CUDA when ONNX_GPU=true;
+other local models keep onnx-asr's default provider selection.
 """
 
 import asyncio
 import logging
+import os
 import threading
 
 from app.services.audio_utils import pcm16_to_float32
@@ -92,8 +93,14 @@ def _load_model(model_id: str):
                 watcher.start()
             try:
                 with track("ASR model download"):
-                    _loaded[model_id] = onnx_asr.load_model(
-                        name, path, quantization=LOCAL_MODEL_QUANTIZATION.get(model_id)
+                    providers = None
+            if os.getenv("ONNX_GPU", "").lower() == "true" and "whisper" in name:
+                providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+            _loaded[model_id] = onnx_asr.load_model(
+                        name,
+                        path,
+                        quantization=LOCAL_MODEL_QUANTIZATION.get(model_id),
+                        providers=providers,
                     )
             except Exception as exc:  # noqa: BLE001 - recorded for the UI, then re-raised
                 if watcher is not None:
