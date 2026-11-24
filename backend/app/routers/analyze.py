@@ -1,3 +1,5 @@
+import json
+import logging
 import uuid
 from datetime import datetime, timezone
 
@@ -11,6 +13,8 @@ from app.models import Directive, Question, Session, TranscriptEntry
 from app.services.briefing_synthesis import agent_model_id, load_agent_configs
 from app.services.meeting_context import build_meeting_context_text
 from app.services.transcript_refiner import REFINER_SLUG, refine_session
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/sessions/{session_id}/analyze", tags=["analyze"])
 
@@ -111,9 +115,8 @@ Output the JSON array:"""
     )
 
 
-    # Parse the JSON array from the response
-    import json
-    # Strip markdown code fences if present
+    # Parse the JSON array from the response. Gateways and small local models
+    # wrap the array in prose or a JSON object; take the first valid array.
     raw = raw.strip()
     if raw.startswith("```"):
         raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
@@ -121,19 +124,29 @@ Output the JSON array:"""
         raw = raw[:-3]
     raw = raw.strip()
 
-    try:
-        items = json.loads(raw)
-    except json.JSONDecodeError:
-        # Try to find JSON array in the response
-        start = raw.find("[")
-        end = raw.rfind("]")
-        if start != -1 and end != -1:
-            try:
-                items = json.loads(raw[start:end + 1])
-            except json.JSONDecodeError:
-                raise HTTPException(500, "Failed to parse analysis results")
-        else:
-            raise HTTPException(500, "Failed to parse analysis results")
+    items = None
+    decoder = json.JSONDecoder()
+    for start, char in enumerate(raw):
+        if char not in "[{":
+            continue
+        try:
+            candidate, _ = decoder.raw_decode(raw[start:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(candidate, list):
+            items = candidate
+            break
+        if isinstance(candidate, dict):
+            for key in ("items", "results", "analysis", "questions", "data"):
+                value = candidate.get(key)
+                if isinstance(value, list):
+                    items = value
+                    break
+            if items is not None:
+                break
+    if items is None:
+        logger.warning("Unparseable analyze response (%s chars): %s", len(raw), raw[:200])
+        raise HTTPException(500, "Failed to parse analysis results")
 
     # Save questions to the database
     count = 0
