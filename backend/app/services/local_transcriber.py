@@ -94,9 +94,9 @@ def _load_model(model_id: str):
             try:
                 with track("ASR model download"):
                     providers = None
-            if os.getenv("ONNX_GPU", "").lower() == "true" and "whisper" in name:
-                providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
-            _loaded[model_id] = onnx_asr.load_model(
+                    if os.getenv("ONNX_GPU", "").lower() == "true" and "whisper" in name:
+                        providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+                    _loaded[model_id] = onnx_asr.load_model(
                         name,
                         path,
                         quantization=LOCAL_MODEL_QUANTIZATION.get(model_id),
